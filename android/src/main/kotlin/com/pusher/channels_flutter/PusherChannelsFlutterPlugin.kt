@@ -264,30 +264,51 @@ class PusherChannelsFlutterPlugin : FlutterPlugin, MethodCallHandler, ActivityAw
     } 
     
     // Other ChannelEventListener methods
-    override fun onUsersInformationReceived(channelName: String?, users: MutableSet<User>?) {
-        val gson = Gson()
-        val channel = pusher!!.getPresenceChannel(channelName)
-        val hash = mutableMapOf<String, Any?>()
-        // convert users back to original structure.
-        for (user in users!!) {
-            hash[user.id] = gson.fromJson(user.info, Map::class.java)
+override fun onUsersInformationReceived(channelName: String?, users: MutableSet<User>?) {
+    val gson = Gson()
+    val channel = pusher!!.getPresenceChannel(channelName)
+    val hash = mutableMapOf<String, Any?>()
+
+    Log.d(TAG, "onUsersInformationReceived: channelName=$channelName, usersCount=${users?.size}")
+
+    // 打印每个 user.info 的原始内容
+    for (user in users!!) {
+        Log.d(TAG, "User ID: ${user.id}, Raw user.info: ${user.info}")
+        try {
+            val userInfo = if (user.info.startsWith("{") && user.info.endsWith("}")) {
+                // 如果已经是 JSON 对象字符串，直接解析
+                gson.fromJson(user.info, Map::class.java)
+            } else {
+                // 否则尝试包装为 JSON 对象
+                gson.fromJson("{\"data\":${user.info}}", Map::class.java)["data"]
+            }
+            hash[user.id] = userInfo
+            Log.d(TAG, "Parsed userInfo: $userInfo")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse user.info: ${user.info}", e)
+            hash[user.id] = mapOf("error" to "Invalid user info format")
         }
-        val data = mapOf(
-            "presence" to mapOf(
-                "count" to users.size,
-                "ids" to users.map { it.id },
-                "hash" to hash
-            )
-        )
-        callback(
-            "onEvent", mapOf(
-                "channelName" to channelName,
-                "eventName" to "pusher:subscription_succeeded",
-                "userId" to channel.me.id,
-                "data" to data
-            )
-        )
     }
+
+    val data = mapOf(
+        "presence" to mapOf(
+            "count" to users.size,
+            "ids" to users.map { it.id },
+            "hash" to hash
+        )
+    )
+
+    Log.d(TAG, "Final data sent to Flutter: $data")
+
+    callback(
+        "onEvent", mapOf(
+            "channelName" to channelName,
+            "eventName" to "pusher:subscription_succeeded",
+            "userId" to channel.me.id,
+            "data" to data
+        )
+    )
+}
 
     override fun onDecryptionFailure(event: String?, reason: String?) {
         callback(
