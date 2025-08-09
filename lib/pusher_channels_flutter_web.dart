@@ -264,6 +264,15 @@ class PusherChannelsFlutterWeb {
     if (call.arguments['authorizer'] != null) {
       options.authorizer = allowInterop(onAuthorizer);
     }
+    if( call.arguments['host'] != null) {
+      options.wsHost = call.arguments['host'];
+    }
+    if( call.arguments['wsPort'] != null) {
+      options.wsPort = call.arguments['wsPort'];
+    }
+    if( call.arguments['wssPort'] != null) {
+      options.wssPort = call.arguments['wssPort'];
+    }
     pusher = Pusher(call.arguments['apiKey'], options);
     pusher!.connection.bind('error', allowInterop(onError));
     pusher!.connection.bind('message', allowInterop(onMessage));
